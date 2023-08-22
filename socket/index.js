@@ -10,8 +10,10 @@ var io = require('socket.io')(server, {
     }
 });
 
-server.listen(3000, () => {
-    console.log("Server started");
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+    console.log(`Server started at http://127.0.0.1:${PORT}`);
 });
 
 app.get("/", (req, res) => {
@@ -41,6 +43,7 @@ io.on('connection', function(socket) {
     if (!sockets[socket.handshake.query.user_id]) {
         sockets[socket.handshake.query.user_id] = [];
     }
+    sockets[socket.handshake.query.user_id].push(socket);
     socket.broadcast.emit('user_connected', socket.handshake.query.user_id);
     connection.query(`UPDATE users SET is_online=1 where id=${socket.handshake.query.user_id}`, function(err, res) {
         if (err) {
@@ -50,20 +53,19 @@ io.on('connection', function(socket) {
     });
 
     socket.on('sent_message', function(data) {
-        var group_id = (data.user_id > data.other_user_id) ? data.user_id + data.other_user_id : data.user_id + data.user_id;
+        var group_id = (data.user_id > data.other_user_id) ? data.user_id + data.other_user_id : data.other_user_id + data.user_id;
         var time = moment().format("h:mm A");
         data.time = time;
-        for (var index in socket[data.user_id]) {
+        for (var index in sockets[data.user_id]) {
             sockets[data.user_id][index].emit('receive_message', data);
         }
-        for (var index in socket[data.other_user_id]) {
+        for (var index in sockets[data.other_user_id]) {
             sockets[data.other_user_id][index].emit('receive_message', data);
         }
         connection.query(`INSERT INTO chats (user_id,other_user_id,message,group_id) values (${data.user_id},${data.other_user_id},"${data.message}",${group_id})`, function(err, res) {
             if (err) {
                 throw err;
             }
-            console.log("message sent");
         })
     })
     socket.on('disconnect', function(err) {

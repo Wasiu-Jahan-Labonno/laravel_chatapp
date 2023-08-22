@@ -43,7 +43,7 @@
                 </ul>
             </div>
               @if($id)
-            <div class="chat">
+            <div class="chat chatbox-custom">
                 <div class="chat-header clearfix">
                     <div class="row">
 
@@ -71,9 +71,9 @@
                 </div>
 
                     <div class="chat-history">
-                     @foreach ($messages as $message)
-                        <ul class="m-b-0">
-
+                     
+                        <ul id="chatlog" class="m-b-0">
+                        @foreach ($messages as $message)
                          @if($message['user_id']==Auth::id())
                             <li class="clearfix">
                                 <div class="message-data text-right">
@@ -93,8 +93,8 @@
                                 <div class="message other-message float-left">{{$message['message'] }} </div>
                             </li>
                            @endif
-                        </ul>
                         @endforeach
+                        </ul>
                     </div>
 
 
@@ -121,6 +121,9 @@
 @endsection
 @section('script')
 <script>
+    $(document).ready(() => {
+        $(".chat-history").animate({ scrollTop: $('.chat-history').prop("scrollHeight")}, 400);
+    })
    $(function(){
     var user_id = '{{ Auth::id() }}';
     var other_user_id="{{($otherUser)?$otherUser->id:''}}";
@@ -140,15 +143,35 @@
                 otherUserName,
             }
             socket.emit('sent_message', data);
-            console.log(data);
-            console.log(user_id+ ' ' + other_user_id);
             $('#message_input').val('');
         }
     })
 
     socket.on('receive_message', function(data){
-        //array_push($messages, data);
-        dd(data);
+        var html;
+        if((data.user_id == user_id && data.other_user_id==other_user_id) || (data.other_user_id==user_id && data.user_id == other_user_id)){
+           if(data.user_id == user_id){
+                html =`<li class="clearfix">
+                                <div class="message-data text-right">
+                                    <span class="message-data-time">${data.time}
+                                    </span>
+                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name={{ Auth::user()->name }}" alt="{{ Auth::user()->name }}">
+                                </div>
+                                <div class="message other-message float-right">${data.message} </div>
+                            </li>`
+           }else{
+             html = `<li class="clearfix">
+                                <div class="message-data text-left">
+                                    <span class="message-data-time">${data.time}
+                                    </span>
+                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name=${data.otherUserName}" alt="${data.otherUserName}">
+                                </div>
+                                <div class="message other-message float-left">${data.message}</div>
+                            </li>`
+           }
+           $("#chatlog").append(html);
+           $(".chat-history").animate({ scrollTop: $('.chat-history').prop("scrollHeight")}, 400);
+        }
     });
 
     socket.on('user_connected', function(data){
