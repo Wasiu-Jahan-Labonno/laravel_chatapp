@@ -17,23 +17,26 @@
 
 
                 <ul class="list-unstyled chat-list mt-2 mb-0">
-
-
-
                      @foreach ($friends as $friend)
                      <a href="{{ route('home',$friend['id']) }}">
                     <li class="clearfix">
                         <img src="https://bootdey.com/img/Content/avatar/avatar7.png" alt="avatar">
                         <div class="about">
                             <div class="name">{{ $friend['name'] }}</div>
-                            <div class="status">
-                                <div class="status" id = "status_{{ $friend['id'] }}">
-                                @if($friend['is_online']==1)
-                                  <i class="fa fa-circle online"></i> online </div>
-                                @else
-                                 <i class="fa fa-circle offline"></i> offline </div>
-                                 @endif
+                            <div class="status" id = "status_{{ $friend['id'] }}">
+                                
+                            @if($friend['is_online']==1)
+                                <i class="fa fa-circle online"></i> online </div>
+                            @else
+                                <i class="fa fa-circle offline"></i> offline </div>
+                            @endif
                         </div>
+                        <div class="float-right" id="unread-count-{{$friend['id']}}">
+                            @if($friend['unread_message']>0)
+                                <span class="badge bg-success">{{$friend['unread_message']}}</span>
+                            @endif
+                        </div>
+                        
                     </li>
                 </a>
                       @endforeach
@@ -49,14 +52,12 @@
 
                         <div class="col-lg-6">
                             <a href="javascript:void(0);" data-toggle="modal" data-target="#view_info">
-                                <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name={{ $otherUser->name }}" alt="avatar">
+                                <img src="{{asset('img/user.png')}}?name={{ $otherUser->name }}" alt="avatar">
                             </a>
                             <div class="chat-about">
                          
                                 <h6 class="m-b-0">{{ $otherUser->name }}</h6>
-                                @if($friend['unread_messages']>0)
-                                <div class="badge bg-success float-right">5</div>
-                                @endif
+                               
                                 <small>Last seen: 2 hours ago</small>
                             </div>
                         </div>
@@ -77,20 +78,24 @@
                          @if($message['user_id']==Auth::id())
                             <li class="clearfix">
                                 <div class="message-data text-right">
-                                    <span class="message-data-time">{{ date("h:i:A",strtotime($message['created_at'])) }}
+                               
+                                    <span class="message-data-time">{{ $message['time'] }}
                                     </span>
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name={{ Auth::user()->name }}" alt="avatar">
+                                    <img src="{{asset('img/user.png')}}?name={{ Auth::user()->name }}" alt="avatar">
+                                   
                                 </div>
                                 <div class="message other-message float-right">{{$message['message'] }} </div>
                             </li>
                             @elseif ($message['user_id']==$otherUser->id)
                             <li class="clearfix">
                                 <div class="message-data text-left">
-                                    <span class="message-data-time">{{ date("h:i:A",strtotime($message['created_at'])) }}
+                                
+                                <img src="{{asset('img/user.png')}}?name={{ $otherUser->name }}" alt="avatar">
+                                <span class="message-data-time">{{ $message['time'] }}
                                     </span>
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name={{ $otherUser->name }}" alt="avatar">
+                                  
                                 </div>
-                                <div class="message other-message float-left">{{$message['message'] }} </div>
+                                <div class="message my-message float-left">{{$message['message'] }} </div>
                             </li>
                            @endif
                         @endforeach
@@ -128,7 +133,7 @@
     var user_id = '{{ Auth::id() }}';
     var other_user_id="{{($otherUser)?$otherUser->id:''}}";
     var otherUserName = "{{($otherUser)?$otherUser->name:''}}";
-    var socket = io("http://localhost:3000",{query:{user_id:user_id}});
+    var socket = io("http://192.168.1.125:3000",{query:{user_id:user_id}});
 
     $("#chat-form").on("submit",function(e){
         e.preventDefault();
@@ -155,24 +160,34 @@
                                 <div class="message-data text-right">
                                     <span class="message-data-time">${data.time}
                                     </span>
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name={{ Auth::user()->name }}" alt="{{ Auth::user()->name }}">
+                                    <img src="{{asset('img/user.png')}}?name={{ Auth::user()->name }}" alt="{{ Auth::user()->name }}">
                                 </div>
                                 <div class="message other-message float-right">${data.message} </div>
                             </li>`
            }else{
+            socket.emit('read_message', data.id);
              html = `<li class="clearfix">
                                 <div class="message-data text-left">
+                                    
+                                    <img src="{{asset('img/user.png')}}?name=${data.otherUserName}" alt="${data.otherUserName}">
                                     <span class="message-data-time">${data.time}
                                     </span>
-                                    <img src="https://bootdey.com/img/Content/avatar/avatar7.png/?name=${data.otherUserName}" alt="${data.otherUserName}">
                                 </div>
-                                <div class="message other-message float-left">${data.message}</div>
-                            </li>`
+                                <div class="message my-message float-left">${data.message}</div>
+                            </li>`;
            }
            $("#chatlog").append(html);
            $(".chat-history").animate({ scrollTop: $('.chat-history').prop("scrollHeight")}, 400);
+          
+        }else{
+            $("#unread-count-"+data.user_id).html(`<span class="ml-5 badge bg-success fltrt">${data.unread_message}</span>`)
         }
     });
+
+    socket.on('play_tune', () => {
+        const notification_audio = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
+        notification_audio.play();
+    })
 
     socket.on('user_connected', function(data){
         $("#status_"+data).html('<i class="fa fa-circle online"></i> online');

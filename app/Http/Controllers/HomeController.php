@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\chat;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class HomeController extends Controller
 {
@@ -33,9 +34,12 @@ class HomeController extends Controller
         if($id){
             $otherUser = User::findOrFail($id);
             $group_id = (Auth::id()>$id)?Auth::id().$id:$id.Auth::id();
+            $set_read = chat::where(['user_id'=>$id, 'other_user_id'=>$user_id, 'is_read'=>0])->update(['is_read'=>1]);
             $messages = chat::where('group_id',$group_id)->get()->toArray();
+            
+           
         }
-        $friends = User::where('id','!=',Auth::id())->select('*', DB::raw("(SELECT count(id) from chats where chats.other_user_id=$user_id and chats.user_id=users.id) as unread_messages"))->get()->toArray();
+        $friends = User::where('id','!=',Auth::id())->select('*', DB::raw("(SELECT count(id) from chats where chats.other_user_id=$user_id and chats.user_id=users.id and is_read=0) as unread_message"))->get()->toArray();
         //dd($friends);
         return view('home',compact('friends','messages','otherUser','id'));
     }

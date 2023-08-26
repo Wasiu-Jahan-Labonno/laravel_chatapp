@@ -20,6 +20,7 @@ class Chat extends Migration
             $table->longText('message');
             $table->integer('group_id')->nullable();
             $table->tinyInteger('is_read')->define(0);
+            $table->string('time');
             $table->timestamps();
         });
     }
